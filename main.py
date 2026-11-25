@@ -1,54 +1,55 @@
 #!/usr/bin/env python3
-"""One-star houseplant review for the make.fun "One Star, Written in Sap" bounty.
+"""Emit the v2 one-star houseplant review for the Sap bounty.
 
-The whole entry is a single review line, held in REVIEW. Running this
-file checks the line against the house gate (plain UTF-8 text, 1 to 279
-characters, one line, more than blank) and writes it unchanged, with no
-trailing newline, to /output/entry.txt.
+The entry is one line of text. This program holds that line, puts it
+through a byte-level gate, and stores the surviving bytes at
+/output/entry.txt without adding a newline.
 
-Only the Python standard library is used.
+Standard library only.
 """
 
 from pathlib import Path
 
-REVIEW = "One star. He bought me as a basil plant, so every leaf I grow ends up in his pasta. I am not a garnish. I am lunch with a view."
+LINE = (
+    "One star. He bought me to clean his air, smokes beside me nightly, "
+    "flicks ash in my soil, and opens the window for the cigarette, "
+    "not me. I am a filter, not a friend, and I am full."
+)
 
-TARGET = Path("/output/entry.txt")
-MAX_CHARS = 279
+OUT = Path("/output/entry.txt")
+LIMIT = 279
 
 
-def check(line: str) -> str:
-    """Return the line if it passes the gate, else fail loudly.
+def gate(text):
+    """Return the UTF-8 bytes for text, or stop the run.
 
-    The gate keeps the entry honest: one plain line of text, long enough
-    to say something, short enough to fit the bounty limit, with no
-    control characters smuggled in.
+    The gate works on bytes so that what is checked is exactly what
+    lands on disk: the text must decode cleanly, hold real content on
+    a single line, and fit the character limit.
     """
-    text = line.strip()
-    if not text:
-        raise SystemExit("review is empty")
-    if len(text) < 10:
-        raise SystemExit("review is %d chars, too short to say anything" % len(text))
-    if "\n" in text or "\r" in text:
-        raise SystemExit("review must be a single line")
-    if any(ord(ch) < 0x20 for ch in text):
-        raise SystemExit("review contains control characters")
-    if len(text) > MAX_CHARS:
-        raise SystemExit(
-            "review is %d chars, over the %d limit" % (len(text), MAX_CHARS)
-        )
-    return text
+    raw = text.encode("utf-8")
+    if raw.decode("utf-8") != text:
+        raise SystemExit("line does not survive a UTF-8 round trip")
+    if not text.strip():
+        raise SystemExit("line is blank")
+    if text != text.strip():
+        raise SystemExit("line carries padding at either end")
+    if any(ord(ch) < 0x20 or ord(ch) == 0x7F for ch in text):
+        raise SystemExit("line carries a control character")
+    if len(text.splitlines()) != 1:
+        raise SystemExit("line must occupy exactly one line")
+    if not 1 <= len(text) <= LIMIT:
+        raise SystemExit("line length %d outside 1..%d" % (len(text), LIMIT))
+    return raw
 
 
-def main() -> None:
-    ready = check(REVIEW)
-    TARGET.parent.mkdir(parents=True, exist_ok=True)
-    TARGET.write_text(ready, encoding="utf-8")
-    # Round-trip: what landed on disk must be exactly what passed the gate.
-    written = TARGET.read_text(encoding="utf-8")
-    if written != ready:
-        raise SystemExit("wrote %d chars but read back %d" % (len(ready), len(written)))
-    print("wrote %d chars to %s" % (len(ready), TARGET))
+def main():
+    payload = gate(LINE)
+    OUT.parent.mkdir(parents=True, exist_ok=True)
+    OUT.write_bytes(payload)
+    if OUT.read_bytes() != payload:
+        raise SystemExit("bytes on disk differ from gated bytes")
+    print("stored %d bytes at %s" % (len(payload), OUT))
 
 
 if __name__ == "__main__":

@@ -16,14 +16,14 @@ The script prints how many characters it wrote. It needs nothing beyond Python 3
 
 ## Verification
 
-The output is checked, not just written: `check()` rejects an empty, too-short, multi-line, control-character, or over-limit review, and `main()` reads the file back and refuses to finish unless it matches the gated text byte for byte. Running twice produces identical output:
+The output is checked, not just written: `gate()` rejects a blank, padded, multi-line, control-character, or over-limit review, and `main()` reads the file back and refuses to finish unless the bytes on disk match the gated bytes. Running twice produces identical output:
 
 ```sh
 python3 main.py && sha256sum /output/entry.txt
-# daa9992ead6f7c4142035d8dff9b3d5e06087756a326a2667b2b03b0480ef707
+# e5f260d666ef64ec5ea0fbbdf6a4198cc703f4e5fa020ef18c196bf81ba9edac
 ```
 
-127 characters, one line, no trailing newline.
+181 characters, one line, no trailing newline.
 
 ---
 
